@@ -1,0 +1,1 @@
+# gradle-git-docker-versioning
