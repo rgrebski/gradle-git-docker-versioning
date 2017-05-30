@@ -1,0 +1,83 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
+buildscript {
+    ext {
+        springBootVersion = '2.0.0.M1'
+    }
+    repositories {
+        mavenLocal()
+        mavenCentral()
+        maven { url "https://repo.spring.io/snapshot" }
+        maven { url "https://repo.spring.io/milestone" }
+    }
+    dependencies {
+        classpath "org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}"
+        classpath "se.transmode.gradle:gradle-docker:1.2"
+    }
+}
+
+plugins {
+    id 'com.palantir.git-version' version '0.7.3'
+}
+
+apply plugin: 'java'
+apply plugin: 'org.springframework.boot'
+apply plugin: 'io.spring.dependency-management'
+apply plugin: "docker"
+apply plugin: "com.palantir.git-version"
+
+group "pl.stepwise"
+version gitVersion()
+sourceCompatibility = 1.8
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+    maven { url "https://repo.spring.io/snapshot" }
+    maven { url "https://repo.spring.io/milestone" }
+    maven { url "http://dl.bintray.com/dmahapatro/plugins" }
+
+}
+
+dependencies {
+    compile("org.springframework.boot:spring-boot-starter-web")
+    compile("org.springframework.boot:spring-boot-starter-actuator")
+}
+
+processResources {
+    filter(ReplaceTokens, tokens:[appVersion: gitVersion()])
+}
+
+task buildDocker(type: Docker, dependsOn: build) {
+    push = project.findProperty('push')?.asBoolean() ?: false
+
+    baseImage "java:8"
+    maintainer 'Radek Grebski <radoslaw.grebski@stepwise.pl>'
+    applicationName = jar.baseName
+    tagVersion = 'latest'
+    tag = "rgrebski/gradle-git-docker-versioning"
+    addFile(jar.archivePath, 'app.jar')
+    runCommand("sh -c 'touch /app.jar'")
+    exposePort(8080)
+    entryPoint([ "sh", "-c", 'java $JAVA_OPTS -Djava.security.egd=file:/dev/./urandom -jar /app.jar' ])
+
+    doFirst {
+        copy {
+            from jar
+            into stageDir
+        }
+    }
+}
+
+task showVersion {
+    doLast {
+        println "\nCurrent version: ${gitVersion()}\n"
+
+        def details = versionDetails()
+        println "last tag          : ${details.lastTag}"
+        println "commit distance   : ${details.commitDistance}"
+        println "hash              : ${details.gitHash}"
+        println "branch name       : ${details.branchName}"
+        println "is clean tag      : ${details.isCleanTag}"
+    }
+}
