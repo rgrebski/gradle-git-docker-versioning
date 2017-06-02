@@ -54,7 +54,7 @@ task buildDocker(type: Docker, dependsOn: build) {
     baseImage "java:8"
     maintainer 'Radek Grebski <radoslaw.grebski@stepwise.pl>'
     applicationName = jar.baseName
-    tagVersion = 'latest'
+    tagVersion = gitVersion()
     tag = "rgrebski/gradle-git-docker-versioning"
     addFile(jar.archivePath, 'app.jar')
     runCommand("sh -c 'touch /app.jar'")
